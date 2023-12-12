@@ -1,0 +1,352 @@
+<html>
+
+<head>
+    <title>three.js + ar.js</title>
+    <meta name="viewport" content="width=device-width, viewport-fit=cover, shrink-to-fit=no" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <canvas></canvas>
+    </div>
+    <!--❶ three.jsとAR.jsを読み込む-->
+    <script src="https://unpkg.com/three@0.127.0/build/three.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.3.3/three.js/build/ar.js"></script>
+    <script async>
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.querySelector('canvas'),
+            antialias: true,
+            alpha: true
+        });
+        const camera = new THREE.PerspectiveCamera();
+        const scene = new THREE.Scene();
+        const markerRoot = new THREE.Group();
+        const arToolkitContext = new THREEx.ArToolkitContext({
+            cameraParametersUrl: './camera.dat', // ❷ camera.datを読み込む
+            detectionMode: 'mono'
+        });
+        const arToolkitSource = new THREEx.ArToolkitSource({
+            sourceType: 'webcam'
+        });
+        const arMarkerControl = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+            type: 'pattern',
+            patternUrl: 'pattern-Blue-kazaguruma.patt' // ❸ pattern.pattを読み込む
+        });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        window.addEventListener('resize', handleResize, {
+            passive: true
+        });
+
+        arToolkitContext.init(() => {
+            camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+        });
+
+        arToolkitSource.init(() => {
+            document.querySelector('.wrapper').appendChild(arToolkitSource.domElement); // ❹ videoタグを.wrapper配下に移動させる
+            setTimeout(handleResize, 400); // ❺ リサイズイベントを一度発火させる
+        });
+
+        scene.add(markerRoot);
+
+        let m01Flg = 1;
+        let m02Flg = 1;
+        let m03Flg = 1;
+        let m04Flg = 1;
+        let m05Flg = 1;
+        let count1 = 0;
+        let count2 = 0;
+        let count3 = 0;
+        let count4 = 0;
+        let count5 = 0;
+        let speed1 = 1;
+        let speed2 = 1;
+        let speed3 = 1;
+        let speed4 = 1;
+        let speed5 = 1;
+
+        const directionalLight = new THREE.DirectionalLight(0xFFFFFF);
+        directionalLight.position.set(1, 0, 1);
+        scene.add(directionalLight);
+
+
+        const geometry = new THREE.BufferGeometry();
+        const geometry2 = new THREE.BufferGeometry();
+
+        function createtriangle1(x, y, z, c) {
+
+            // create a simple square shape. We duplicate the top left and bottom right
+            // vertices because each vertex needs to appear once per triangle.
+            const vertices = new Float32Array([
+                x - 0.5, y, z - 0.5, // v0
+                x - 0.5, y, z, // v1
+                x, y, z // v2
+
+            ]);
+            // itemSize = 3 because there are 3 values (components) per vertex
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            const material = new THREE.MeshBasicMaterial({ color: c });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = "OBJECT001";
+            return mesh;
+        }
+        function createtriangle2(x, y, z, c) {
+
+            // create a simple square shape. We duplicate the top left and bottom right
+            // vertices because each vertex needs to appear once per triangle.
+            const vertices2 = new Float32Array([
+                x, y, z - 1.0,
+                x - 0.5, y, z - 0.5,
+                x, y, z
+
+            ]);
+            // itemSize = 3 because there are 3 values (components) per vertex
+            geometry2.setAttribute('position', new THREE.BufferAttribute(vertices2, 3));
+            const material2 = new THREE.MeshBasicMaterial({ color: c });
+            const mesh2 = new THREE.Mesh(geometry2, material2);
+            return mesh2;
+        }
+
+        function createkazaguruma(x, y, z, c1, c2, n) {
+            const triangle1 = createtriangle1(0, 0, 0, c1);
+            const triangle2 = createtriangle2(0, 0, 0, c2);
+            const triangle3 = createtriangle1(0, 0, 0, c1);
+            const triangle4 = createtriangle2(0, 0, 0, c2);
+            triangle3.rotation.y += Math.PI / 2;
+            triangle4.rotation.y += Math.PI / 2;
+            const triangle5 = createtriangle1(0, 0, 0, c1);
+            const triangle6 = createtriangle2(0, 0, 0, c2);
+            triangle5.rotation.y += Math.PI;
+            triangle6.rotation.y += Math.PI;
+            const triangle7 = createtriangle1(0, 0, 0, c1);
+            const triangle8 = createtriangle2(0, 0, 0, c2);
+            triangle7.rotation.y += Math.PI + Math.PI / 2;
+            triangle8.rotation.y += Math.PI + Math.PI / 2;
+            const atari_geometry = new THREE.BoxGeometry(2, 0.01, 2);
+            const atari_material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            atari_material.opacity = 0;
+            atari_material.transparent = true;
+            const atari = new THREE.Mesh(atari_geometry, atari_material);
+            atari.position.set(0, 0.5, 0);
+            atari.name = n;
+
+
+
+            triangle1.add(triangle2);
+            triangle1.add(triangle3);
+            triangle1.add(triangle4);
+            triangle1.add(triangle5);
+            triangle1.add(triangle6);
+            triangle1.add(triangle7);
+            triangle1.add(triangle8);
+            triangle1.add(atari);
+            triangle1.position.set(x, y, z);
+            return triangle1;
+        }
+
+        function createtemoti(x, y, z) {
+            const temotigeometry = new THREE.PlaneGeometry(0.1, 2);
+            const temotimaterial = new THREE.MeshBasicMaterial({ color: 0xfffacd })
+            const temoti = new THREE.Mesh(temotigeometry, temotimaterial);
+            temoti.position.set(x, y - 0.15, z + 1);
+            temoti.rotation.x -= Math.PI / 180 * 90;
+            return temoti;
+        }
+
+        const kazaguruma = createkazaguruma(0, 0, 0, 0xff0000, 0xffff00, "OBJECT001");
+        const temoti = createtemoti(0, 0, 0);
+        const kazaguruma1 = createkazaguruma(1.8, 0, 1, 0x008000, 0x7fffd4, "OBJECT002");
+        const temoti1 = createtemoti(1.8, 0, 1);
+        const kazaguruma2 = createkazaguruma(-1.5, -2, -1, 0x0000ff, 0x87cefa, "OBJECT003");
+        const temoti2 = createtemoti(-1.5, -2, -1);
+        const kazaguruma3 = createkazaguruma(1.3, -1, -1, 0xffe4c4, 0xff8c00, "OBJECT004");
+        const temoti3 = createtemoti(1.3, -1, -1);
+        const kazaguruma4 = createkazaguruma(-1.2, 0.7, 0.8, 0x4b0082, 0x9370db, "OBJECT005");
+        const temoti4 = createtemoti(-1.2, 0.7, 0.8);
+        markerRoot.add(temoti1);
+        markerRoot.add(kazaguruma1);
+        markerRoot.add(temoti2);
+        markerRoot.add(kazaguruma2);
+        markerRoot.add(temoti3);
+        markerRoot.add(kazaguruma3);
+        markerRoot.add(temoti4);
+        markerRoot.add(kazaguruma4);
+
+        markerRoot.add(kazaguruma);
+        markerRoot.add(temoti);
+
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+        const AudioLoader = new THREE.AudioLoader();
+        const kazeSound = new THREE.Audio(listener);
+        AudioLoader.load('./kaze3.mp3', function (buffer) {
+            kazeSound.setBuffer(buffer);
+            kazeSound.setLoop(false);
+            kazeSound.setVolume(1);
+
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            kazaguruma.rotation.y += Math.PI / (180 - speed1);
+            kazaguruma1.rotation.y += Math.PI / (180 - speed2);
+            kazaguruma2.rotation.y += Math.PI / (180 - speed3);
+            kazaguruma3.rotation.y += Math.PI / (180 - speed4);
+            kazaguruma4.rotation.y += Math.PI / (180 - speed5);
+            if (m01Flg != 1) {
+                kazeSound.play();
+                if (count1 <= 26) {
+                    speed1 = -1 * (count1 - 13) ** 2 + 169;
+                    count1 += 0.08;
+                }
+                if (count1 > 26) {
+                    m01Flg = -1 * m01Flg;
+                    count1 = 0;
+                    speed1 = 1;
+                    kazeSound.stop();
+                }
+
+            }
+            if (m02Flg != 1) {
+                kazeSound.play();
+                if (count2 <= 26) {
+                    speed2 = -1 * (count2 - 13) ** 2 + 169;
+                    count2 += 0.08;
+                }
+                if (count2 > 26) {
+                    m02Flg = -1 * m02Flg;
+                    count2 = 0;
+                    speed2 = 1;
+                    kazeSound.stop();
+                }
+
+            }
+            if (m03Flg != 1) {
+                kazeSound.play();
+                if (count3 <= 26) {
+                    speed3 = -1 * (count3 - 13) ** 2 + 169;
+                    count3 += 0.08;
+                }
+                if (count3 > 26) {
+                    m03Flg = -1 * m03Flg;
+                    count3 = 0;
+                    speed3 = 1;
+                    kazeSound.stop();
+                }
+
+            }
+            if (m04Flg != 1) {
+                kazeSound.play();
+                if (count4 <= 26) {
+                    speed4 = -1 * (count4 - 13) ** 2 + 169;
+                    count4 += 0.08;
+                }
+                if (count4 > 26) {
+                    m04Flg = -1 * m04Flg;
+                    count4 = 0;
+                    speed4 = 1;
+                    kazeSound.stop();
+                }
+
+            }
+            if (m05Flg != 1) {
+                kazeSound.play();
+                if (count5 <= 26) {
+                    speed5 = -1 * (count5 - 13) ** 2 + 169;
+                    count5 += 0.08;
+                }
+                if (count5 > 26) {
+                    m05Flg = -1 * m05Flg;
+                    count5 = 0;
+                    speed5 = 1;
+                    kazeSound.stop();
+                }
+
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        renderer.setAnimationLoop((delta) => {
+            if (arToolkitSource.ready) {
+                arToolkitContext.update(arToolkitSource.domElement);
+            }
+
+            renderer.render(scene, camera);
+        });
+
+        function handleResize() {
+            if (arToolkitSource.ready) {
+                arToolkitSource.onResize();
+                arToolkitSource.copySizeTo(renderer.domElement);
+            }
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+        }
+
+        window.addEventListener("mousedown", function (ret) {
+            let mouseX = ret.clientX;                           // マウスのx座標
+            let mouseY = ret.clientY;                           // マウスのy座標
+            //console.log(mouseX + " : " + mouseY);
+            mouseX = (mouseX / window.innerWidth) * 2 - 1;    // -1 ～ +1 に正規化されたx座標
+            mouseY = -(mouseY / window.innerHeight) * 2 + 1;    // -1 ～ +1 に正規化されたy座標
+            let pos = new THREE.Vector3(mouseX, mouseY, 1);     // マウスベクトル
+            pos.unproject(camera);                              // スクリーン座標系をカメラ座標系に変換
+            // レイキャスタを作成（始点, 向きのベクトル）
+            let ray = new THREE.Raycaster(camera.position, pos.sub(camera.position).normalize());
+            let obj = ray.intersectObjects(scene.children, true);   // レイと交差したオブジェクトの取得
+            console.log(obj);
+            console.log(obj[0]);
+            if (obj.length > 0) {                                // 交差したオブジェクトがあれば
+                picked(obj[0].object.name);                       // ピックされた対象に応じた処理を実行
+                console.log(obj[0].object.name)
+                // m01Flg = -1 * m01Flg;
+                console.log("debug 001");
+            }
+            console.log("-----");
+        });
+
+        function picked(objName) {
+            console.log("objName = " + objName);
+            switch (objName) {
+                case "OBJECT001":
+                    console.log("OBJECT001 hit");
+                    m01Flg = -1 * m01Flg;
+                    break;
+                case "OBJECT002":
+                    console.log("OBJECT002 hit");
+                    m02Flg = -1 * m02Flg;
+                    break;
+                case "OBJECT003":
+                    console.log("OBJECT003 hit");
+                    m03Flg = -1 * m03Flg;
+                    break;
+                case "OBJECT004":
+                    console.log("OBJECT004 hit");
+                    m04Flg = -1 * m04Flg;
+                    break;
+                case "OBJECT005":
+                    console.log("OBJECT005 hit");
+                    m05Flg = -1 * m05Flg;
+                    break;
+                default:
+                    break;
+            }
+        }
+    </script>
+</body>
+
+</html>
